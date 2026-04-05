@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+<table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Название встречи</th>
+        <th>Время начала встречи</th>
+        <th>Время окончания</th>
+        <th></th>
+
+      </tr>
+    </thead>
+    <tbody>
+      {% for meeting in meetings %}
+        <tr>
+            <td>{{ meeting.id }}</td>
+            <td>{{ meeting.name }}</td>
+            <td>{{ meeting.datetime_beginning }}</td>
+            <td>{{ meeting.datetime_end }}</td>
+ 
+      {% endfor %}
+    </tbody>
+  </table>
+
+
+{% endblock %}

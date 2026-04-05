@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Календарь пользователя - {{ month_name }} {{ year }}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; margin: 20px; background-color: #f4f7f6; color: #333; }
+        .calendar-container { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #2c3e50; }
+        .month-navigation { text-align: center; margin-bottom: 20px; }
+        .month-navigation a { margin: 0 15px; text-decoration: none; color: #3498db; font-size: 1.2em; }
+        .month-navigation span { font-size: 1.4em; font-weight: bold; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; border: 1px solid #ddd; padding: 10px; background-color: #fff; border-radius: 5px; }
+        .calendar-grid .day-header { background-color: #e8ecef; font-weight: bold; text-align: center; padding: 10px; border-radius: 4px; }
+        .calendar-grid .day { background-color: #fdfdfd; border: 1px solid #eee; padding: 10px; min-height: 120px; border-radius: 4px; transition: background-color 0.2s ease; }
+        .calendar-grid .day:hover { background-color: #f0f7f4; }
+        .calendar-grid .day .day-number { font-weight: bold; font-size: 1.1em; margin-bottom: 8px; color: #555; display: block; text-align: right; }
+        .calendar-grid .day.other-month { background-color: #f9f9f9; opacity: 0.6; }
+        .calendar-grid .day .event-list { list-style: none; padding: 0; margin-top: 5px; font-size: 0.9em; }
+        .calendar-grid .day .event-list li { margin-bottom: 4px; padding: 3px 6px; border-radius: 3px; word-wrap: break-word; }
+        .calendar-grid .day .event-list .meeting { background-color: #d4edda; color: #155724; border-left: 3px solid #28a745; }
+        .calendar-grid .day .event-list .task { background-color: #fff3cd; color: #85640d; border-left: 3px solid #ffc107; }
+        .calendar-grid .day .event-list a { text-decoration: none; color: inherit; font-weight: 500; }
+        .calendar-grid .day .event-list a:hover { text-decoration: underline; }
+
+        /* Детальный вид дня */
+        .daily-detail { margin-top: 30px; border-collapse: collapse; width: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .daily-detail th, .daily-detail td { border: 1px solid #e0e0e0; padding: 10px; text-align: left; vertical-align: top; }
+        .daily-detail th { background-color: #e8ecef; font-weight: bold; color: #2c3e50; }
+        .daily-detail tr:nth-child(even) { background-color: #fdfdfd; }
+        .daily-detail tr:hover { background-color: #f0f7f4; }
+        .daily-detail .time-slot { font-weight: bold; width: 100px; color: #555; }
+        .daily-detail .event-item { font-size: 0.95em; margin-bottom: 5px; }
+        .daily-detail .meeting-detail { background-color: #d4edda; border-left: 4px solid #28a745; padding: 5px 8px; border-radius: 4px; }
+        .daily-detail .task-detail { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 5px 8px; border-radius: 4px; }
+        .daily-detail .task-detail span { font-style: italic; font-size: 0.9em; color: #6c757d;}
+    </style>
+</head>
+<body>
+    <div class="calendar-container">
+        <h1>Календарь пользователя</h1>
+        <div class="month-navigation">
+            <!-- Ссылки для навигации по месяцам (нужно реализовать на бэкенде) -->
+            <a href="#">&lt; Предыдущий месяц</a>
+            <span>{{ month_name }} {{ year }}</span>
+            <a href="#">Следующий месяц &gt;</a>
+        </div>
+
+        <h2>Месячный вид</h2>
+        <div class="calendar-grid">
+            <!-- Заголовки дней недели -->
+            <div class="day-header">Пн</div>
+            <div class="day-header">Вт</div>
+            <div class="day-header">Ср</div>
+            <div class="day-header">Чт</div>
+            <div class="day-header">Пт</div>
+            <div class="day-header">Сб</div>
+            <div class="day-header">Вс</div>
+
+
+            <!-- Дни месяца -->
+            {% for week in calendar_grid %}
+                {% for day_num in week %}
+                    {% set current_day_iso = none %}
+                    {% set day_info = none %}
+                    {% if day_num != 0 %}
+                        {% set current_day_date = date(year, month, day_num) %}
+                        {% set current_day_iso = current_day_date.isoformat() %}
+                        {% set day_info = monthly_events.get(current_day_iso) %}
+                    {% endif %}
+
+                    <div class="day {% if day_num == 0 %}other-month{% endif %}">
+                        {% if day_num != 0 %}
+                            <span class="day-number">{{ day_num }}</span>
+                            <ul class="event-list">
+                                {% if day_info['events_list'] %}
+                                {% for item in day_info.get('events_list') %}
+                                      <li class="{{ item.type }}-detail">
+                                            <a href="#day-{{ current_day_iso }}-{{ item.hour if item.type == 'meeting' else 'task' }}-{{ item.id }}">
+                                                <p> {{ item.date }} </p>
+                                                {% if item.type == 'meeting' %}
+                                                    Встреча: {{ item.start_time.strftime('%H:%M') }} - {{ item.title }}
+
+                                                {% elif item.type == 'task' %}
+                                                    Задача: {{ item.title }}
+                                                {% endif %}
+                                            </a>
+                                        </li>
+                                {% endfor %}
+                                {% endif %}
+
+                            </ul>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <!-- Детальный вид по дням -->
+        <h2>Детализация по дням</h2>
+        {% for day_iso, day_details in daily_schedule.items() %}
+            {% set day_date_obj = date.fromisoformat(day_iso) %}
+            <h3 id="day-{{ day_iso }}">День: {{ day_date_obj.strftime('%d %B %Y') }}</h3>
+            <table class="daily-detail">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th>Событие / Задача</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Сначала выводим часы с событиями, потом задачи без времени #}
+                    {% set sorted_hours = day_details.keys() | sort %}
+                    
+                    {# Вывод часов с 00:00 до 23:00 #}
+                    {% for hour in range(24) %}
+                        {% if hour in day_details %}
+                            {% set items_for_hour = day_details[hour] %}
+                            <tr>
+                                <td class="time-slot">{{ "%02d:00"|format(hour) }}</td>
+                                <td>
+                                    {% for item in items_for_hour %}
+                                        {% if item.type == 'meeting' %}
+                                            <div class="event-item meeting-detail">
+                                                <strong>Встреча:</strong> {{ item.title }} ({{ item.start_time.strftime('%H:%M') }})
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            {# Можно отображать пустые часы или пропускать #}
+                            {# <tr>
+                                <td class="time-slot">{{ "%02d:00"|format(hour) }}</td>
+                                <td></td>
+                            </tr> #}
+                        {% endif %}
+                    {% endfor %}
+
+                    {# Вывод задач без конкретного часа (группируем под ключом -1) #}
+                    {% if -1 in day_details and day_details[-1] %}
+                        <tr>
+                            <td class="time-slot">Без времени</td>
+                            <td>
+                                {% for item in day_details[-1] %}
+                                    {% if item.type == 'task' %}
+                                        <div class="event-item task-detail">
+                                            <strong>Задача:</strong> {{ item.title }} 
+                                            {% if item.due_date %}
+                                                <span>(Дедлайн: {{ item.due_date.strftime('%d.%m.%Y') }})</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        {% endfor %}
+
+    </div>
+
+    <script>
+        // Пример JavaScript для плавной прокрутки к дневному виду при клике на день
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const dayLinks = document.querySelectorAll('.calendar-grid .day .event-list a');
+            dayLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

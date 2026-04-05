@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h1 class="text-center mb-4">Изменение данных пользователя</h1>
+            <p class="text-center text-muted mb-4">Текущий email: {{ current_user.email }}</p>
+            <form id="updateUserForm" class="p-4 border rounded shadow-sm">
+                <div class="mb-3">
+                    <label for="updateEmail" class="form-label">Новый Email</label>
+                    <input type="email" class="form-control" id="updateEmail" name="email" placeholder="Оставьте пустым, если не хотите менять">
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </div>
+                <div class="mb-3">
+                    <label for="updatePassword" class="form-label">Новый Пароль</label>
+                    <input type="password" class="form-control" id="updatePassword" name="password" placeholder="Оставьте пустым, если не хотите менять">
+                    <div class="valid-feedback"></div>
+<div class="invalid-feedback"></div>
+                </div>
+                <div id="updateMessageArea" class="alert alert-info mt-3" role="alert" style="display: none;"></div>
+                <div id="updateErrorMessage" class="alert alert-danger mt-3" role="alert" style="display: none;"></div>
+                <button type="submit" class="btn btn-warning w-100 mt-3">Сохранить изменения</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    document.getElementById('updateUserForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const data = {};
+        for (let [key, value] of formData.entries()) {
+            if (value) {
+                data[key] = value;
+            }
+        }
+        const messageArea = document.getElementById('updateMessageArea');
+        const errorMessage = document.getElementById('updateErrorMessage');
+        messageArea.style.display = 'none';
+        errorMessage.style.display = 'none';
+        messageArea.textContent = '';
+        errorMessage.textContent = '';
+        try {
+            const response = await fetch('/update_user', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                messageArea.textContent = result.message;
+                messageArea.style.display = 'block';
+                form.reset();
+            } else {
+                // Обработка ошибок от сервера
+                if (result && result.detail) {
+                    errorMessage.textContent = `Ошибка: ${result.detail}`;
+                } else {
+                    errorMessage.textContent = 'Произошла неизвестная ошибка при обновлении.';
+                }
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            errorMessage.textContent = 'Ошибка сети. Попробуйте позже.';
+            errorMessage.style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}

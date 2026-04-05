@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+<p>Состав команды {{ current_user.team.name }}</p>
+<table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+ {% if current_user.role == 'админ команды' %}
+    {% for user in team %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+                <div class="delete-user-container">
+                <button class="delete-user-btn" data-user-email="{{ user.email }}">Удалить из команды</button>
+                </div>
+            </td>
+        </tr>
+    
+    {% endfor %}
+{% else %}
+    {% for user in team %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.email }}</td>
+            <td></td>
+        </tr>
+    {% endfor %}
+{% endif %}
+    </tbody>
+  </table>
+
+<div id="messageArea" style="display: none; color: green; margin-top: 10px;"></div>
+<div id="errorMessage" style="display: none; color: red; margin-top: 10px;"></div>
+
+
+<script>
+
+    const deleteButtons = document.querySelectorAll('.delete-user-btn');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+            const userEmailToDelete = this.getAttribute('data-user-email');
+
+            if (!userEmailToDelete) {
+                console.error('Email пользователя не найден в data-атрибуте.');
+                return;
+            }
+            const messageArea = document.getElementById('messageArea');
+            const errorMessage = document.getElementById('errorMessage');
+            messageArea.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/delete_user_to_team', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email_user: userEmailToDelete })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    messageArea.textContent = result.message;
+                    messageArea.style.display = 'block';
+                } else {
+                    if (result && result.detail) {
+                        errorMessage.textContent = `Ошибка: ${result.detail}`;
+                    } else {
+                        errorMessage.textContent = `Ошибка сервера (${response.status}): ${response.statusText}`;
+                    }
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+  
+                console.error('Network or JSON parsing error:', error);
+                errorMessage.textContent = 'Ошибка сети или сервера. Попробуйте позже.';
+                errorMessage.style.display = 'block';
+            }
+        });
+    });
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+
+
+<div class="container mt-5">
+    <h2 class="mb-3">Создание задачи</h2>
+    <form id="addTaskForm" class="row g-3 needs-validation" novalidate>
+        <div class="col-md-6">
+            <label for="taskName" class="form-label">Название задачи:</label>
+            <input type="text" class="form-control" id="taskName" name="name" required>
+            <div class="invalid-feedback">Пожалуйста, введите название задачи.</div>
+        </div>
+        <div class="col-md-6">
+            <label for="userId" class="form-label">Исполнитель задачи:</label>
+            <select class="form-select" id="userId" name="userId" required>
+                <option value="">Выберите исполнителя</option>
+                {% for user in team_users %}
+                <option value="{{ user.id }}">{{ user.email }}</option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">Пожалуйста, выберите исполнителя.</div>
+        </div>
+        <div class="col-md-6">
+            <label for="dedline" class="form-label">Дедлайн:</label>
+            <input type="date" class="form-control" id="dedline" name="dedline" required>
+            <div class="invalid-feedback">Пожалуйста, выберите дедлайн.</div>
+        </div>
+        <div class="col-12">
+            <label for="description" class="form-label">Описание задачи:</label>
+            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            <div class="invalid-feedback">Пожалуйста, введите описание задачи.</div>
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-success">Создать задачу</button>
+        </div>
+    </form>
+    <div id="messageArea" class="alert alert-success mt-3" role="alert" style="display: none;"></div>
+    <div id="errorMessage" class="alert alert-danger mt-3" role="alert" style="display: none;"></div>
+</div>
+
+
+
+<script>
+    document.getElementById('addTaskForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const taskNameInput = document.getElementById('taskName');
+        const executorInput = document.getElementById('userId');
+        const dedlineInput = document.getElementById('dedline');
+        const descriptionInput = document.getElementById('description');
+
+        const messageArea = document.getElementById('messageArea');
+        const errorMessage = document.getElementById('errorMessage');
+
+        messageArea.style.display = 'none';
+        errorMessage.style.display = 'none';
+        messageArea.textContent = '';
+        errorMessage.textContent = '';
+
+        const taskName = taskNameInput.value.trim();
+        const userId = executorInput.value;
+        const dedline = dedlineInput.value.trim();
+        const description = descriptionInput.value;
+
+
+        if (!taskName) {
+            errorMessage.textContent = 'Название задачи не может быть пустым.';
+            errorMessage.style.display = 'block';
+            return;
+        }
+
+        const taskData = {
+            name: taskName,
+            executor_id: userId,
+            dedline: dedline,
+            description: description
+        };
+
+        try {
+            const response = await fetch('/add_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                messageArea.textContent = result.message;
+                messageArea.style.display = 'block';
+                teamNameInput.value = '';
+            } else {
+                if (result && result.detail) {
+                    errorMessage.textContent = `Ошибка: ${result.detail}`;
+                } else {
+                    errorMessage.textContent = 'Произошла неизвестная ошибка при создании задачи.';
+                }
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            errorMessage.style.display = 'block';
+        }
+    });
+</script>
+
+{% endblock %}

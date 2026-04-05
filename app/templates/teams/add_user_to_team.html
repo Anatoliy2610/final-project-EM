@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+    <div class="add-team-container">
+        <h1>Добавить или обновить пользователя в команде</h1>
+        <form id="addUserTeam">
+            <div class="form-group">
+                <label for="email_user">Email пользователя:</label>
+                <input type="email" class="form-control" id="email_user" name="email_user" required>
+            </div>
+            <div class="form-group">
+                <label for="role_user">Роль:</label>
+                <select class="form-control" id="role_user" name="role_user" required>
+                    <option value="">Выберите роль</option>
+                    <option value="менеджер">менеджер</option>
+                    <option value="сотрудник">сотрудник</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить в команду</button>
+        </form>
+        <div id="messageArea" class="message-area" style="display: none;"></div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+    </div>
+
+
+<script>
+    document.getElementById('addUserTeam').addEventListener('submit', async function(event) {
+        event.preventDefault(); // Предотвращаем стандартную отправку формы
+        const EmailInput = document.getElementById('email_user');
+        const roleSelect = document.getElementById('role_user');
+        const messageArea = document.getElementById('messageArea');
+        const errorMessage = document.getElementById('errorMessage');
+
+
+        messageArea.style.display = 'none';
+        errorMessage.style.display = 'none';
+        messageArea.textContent = '';
+        errorMessage.textContent = '';
+
+        const Email = EmailInput.value;
+        const Role = roleSelect.value;
+
+        const userData = {
+            email_user: Email,
+            role: Role
+        };
+
+        try {
+            // Получаем CSRF токен, если используется Django
+            // const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value; // Раскомментируйте, если используете Django
+
+            const response = await fetch('/user_to_team', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Если требуется токен аутентификации, добавьте его сюда:
+                    // 'Authorization': `Bearer ${getAuthToken()}`, 
+                    // 'X-CSRFToken': csrftoken // Добавьте CSRF токен, если используете Django
+                },
+                body: JSON.stringify(userData)
+            });
+        const result = await response.json();
+            if (response.ok) {
+                messageArea.textContent = result.message;
+                messageArea.style.display = 'block';
+                teamNameInput.value = ''; // Очищаем поле ввода после успешного создания
+            } else {
+                if (result && result.detail) {
+                    errorMessage.textContent = `Ошибка: ${result.detail}`;
+                } else {
+                    errorMessage.textContent = 'Произошла неизвестная ошибка при создании команды.';
+                }
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            errorMessage.style.display = 'block';
+        }
+    });
+
+</script>
+{% endblock %}

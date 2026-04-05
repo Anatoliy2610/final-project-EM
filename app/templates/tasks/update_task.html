@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+<h1>Изменение задачи</h1>
+
+    {% if task %} {# Проверяем, есть ли данныезадачи для предзаполнения #}
+        <form id="updateTaskForm">
+
+            <div class="form-group">
+                <label for="taskID">ID задачи</label>
+                <input type="text" class="form-control" id="taskID" name="id" value="{{ task.id }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="taskName">Название задачи</label>
+                <input type="text" class="form-control" id="taskName" name="new_name" value="{{ task.name }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="taskDescription">Описание</label>
+                <textarea class="form-control" id="taskDescription" name="description">{{ task.description }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="taskStatus">Статус</label>
+                <select class="form-control" id="taskStatus" name="status" required>
+                    <option value="К выполнению" {% if task.status == 'К выполнению' %}selected{% endif %}>К выполнению</option>
+                    <option value="В работе" {% if task.status == 'В работе' %}selected{% endif %}>В работе</option>
+                    <option value="Выполнено" {% if task.status == 'Выполнено' %}selected{% endif %}>Выполнено</option>
+                    <option value="Отменено" {% if task.status == 'Отменено' %}selected{% endif %}>Отменено</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="taskExecutor">Исполнитель</label>
+                {# Предполагается, что у вас есть список пользователей для выбора #}
+                {# Можно передать список пользователей в шаблон или сделать AJAX запрос #}
+                <select class="form-control" id="taskExecutor" name="executor_id" required>
+                    {% for user in team_users %} {# Предполагается, что 'users' переданы в контекст #}
+                        <option value="{{ user.id }}" {% if user.id == task.executor_id %}selected{% endif %}>
+                            {{ user.email }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+        </form>
+
+        <div id="messageArea" style="display: none; color: green; margin-top: 10px;"></div>
+        <div id="errorMessage" style="display: none; color: red; margin-top: 10px;"></div>
+
+    {% else %}
+        <p>Не удалось загрузить данные задачи.</p>
+    {% endif %}
+
+
+    <script>
+        document.getElementById('updateTaskForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const messageArea = document.getElementById('messageArea');
+            const errorMessage = document.getElementById('errorMessage');
+            messageArea.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            const formData = new FormData(form);
+            const taskData = {};
+            for (const [key, value] of formData.entries()) {
+                taskData[key] = value;
+            }
+            taskData.executor_id = parseInt(taskData.executor_id, 10);
+            const taskId = window.location.pathname.split('/').pop();
+            if (!taskId || isNaN(parseInt(taskId, 10))) {
+                errorMessage.textContent = 'Не удалось определить ID задачи для обновления.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/update_task/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    messageArea.textContent = result.message;
+                    messageArea.style.display = 'block';
+                } else {
+                    if (result && result.detail) {
+                        errorMessage.textContent = `Ошибка: ${result.detail}`;
+                    } else {
+                        errorMessage.textContent = `Ошибка сервера (${response.status}): ${response.statusText}`;
+                    }
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                errorMessage.textContent = 'Ошибка сети. Попробуйте позже.';
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+{% endblock %}

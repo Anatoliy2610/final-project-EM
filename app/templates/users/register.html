@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h1 class="text-center mb-4">Регистрация</h1>
+            <form id="registrationForm" class="p-4 border rounded shadow-sm">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email:</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                    <div class="invalid-feedback" id="registrationEmailError"></div>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Пароль:</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                    <div class="invalid-feedback" id="password-error"></div>
+                </div>
+                <div id="registrationForm" class="form-text text-center mb-3"></div>
+                <button type="submit" class="btn btn-success w-100 mt-3">Зарегистрироваться</button>
+                <div id="form-message"></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+  
+
+    <script>
+        // Получаем элементы формы и сообщений
+        const registrationForm = document.getElementById('registrationForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const emailErrorDiv = document.getElementById('registrationEmailError');
+        const passwordErrorDiv = document.getElementById('password-error');
+        const formMessageDiv = document.getElementById('form-message');
+
+        // Функция для отображения сообщений об ошибках Pydantic
+        function displayPydanticErrors(errors) {
+            // Сначала очищаем все предыдущие ошибки
+            emailErrorDiv.textContent = '';
+            passwordErrorDiv.textContent = '';
+
+            if (errors && errors.length > 0) {
+                errors.forEach(error => {
+                    const field = error.loc[0]; // Получаем имя поля (например, 'email' или 'password')
+                    const message = error.msg;
+
+                    if (field === 'email') {
+                        emailErrorDiv.textContent = message;
+                    } else if (field === 'password') {
+                        passwordErrorDiv.textContent = message;
+                    }
+                });
+            }
+        }
+
+        // Функция для отображения общих сообщений (успех/серверная ошибка)
+        function displayGeneralMessage(message, isSuccess = false) {
+            formMessageDiv.innerHTML = ''; // Очистить предыдущие сообщения
+            const messageElement = document.createElement('div');
+            if (isSuccess) {
+                messageElement.className = 'success-message';
+                messageElement.textContent = message;
+                registrationForm.reset(); // Очистить форму при успехе
+            } else {
+                messageElement.style.color = '#e02d2d'; // Красный цвет для ошибок
+                messageElement.textContent = `Ошибка: ${message}`;
+            }
+            formMessageDiv.appendChild(messageElement);
+            // Сообщение об успехе остается, общие ошибки можно скрыть через некоторое время
+            if (!isSuccess && formMessageDiv.contains(messageElement)) {
+                setTimeout(() => {
+                    formMessageDiv.innerHTML = '';
+                }, 7000);
+            }
+        }
+
+        // Обработчик отправки формы
+        registrationForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Предотвращаем стандартную отправку формы
+
+            // Очищаем предыдущие сообщения об ошибках Pydantic
+            emailErrorDiv.textContent = '';
+            passwordErrorDiv.textContent = '';
+            formMessageDiv.innerHTML = ''; // Очищаем общее сообщение
+
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            // Собираем данные для отправки
+            const userData = {
+                email: email,
+                password: password
+            };
+
+            try {
+                const response = await fetch('/register/', { // Путь к вашему FastAPI эндпоинту
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Если требуется аутентификация, добавьте заголовок Authorization
+                        // 'Authorization': `Bearer ${your_token}`
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Успешная регистрация
+                    displayGeneralMessage(result.message || 'Регистрация прошла успешно!', true);
+                } else {
+                    // Обработка ошибок от сервера
+                    if (response.status === 422) { // Код ошибки Pydantic валидации
+                        displayPydanticErrors(result.detail);
+                    } else if (response.status === 409) { // Пользователь уже существует
+                        displayGeneralMessage(`Пользователь с email ${email} уже существует.`);
+                    } else {
+                        // Другие ошибки сервера
+                        displayGeneralMessage(result.detail || `Произошла неизвестная ошибка (статус ${response.status}).`);
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка сети или сервера:', error);
+                displayGeneralMessage('Не удалось подключиться к серверу. Пожалуйста, попробуйте позже.');
+            }
+        });
+
+        // Опционально: Проверка валидности полей "на лету" (можно отключить, если полагаться только на серверную валидацию)
+        emailInput.addEventListener('input', () => {
+            if (emailInput.validity.valid) {
+                emailErrorDiv.textContent = '';
+            } else if (emailInput.value) { // Показываем ошибку, только если что-то введено
+                emailErrorDiv.textContent = 'Пожалуйста, введите корректный email.';
+            }
+        });
+
+        passwordInput.addEventListener('input', () => {
+             if (passwordInput.validity.valid) {
+                passwordErrorDiv.textContent = '';
+            } else if (passwordInput.value) {
+                // Здесь можно добавить более сложную проверку пароля, если она есть в Pydantic
+                 passwordErrorDiv.textContent = 'Пароль должен содержать не менее 8 символов.'; // Пример
+            }
+        });
+
+    </script>
+
+{% endblock %}
+
+

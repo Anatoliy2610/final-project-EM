@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+<div class="container mt-4">
+{% if current_user.role == 'админ команды' %}
+  <a href='/add_meeting' class='btn btn-primary mb-3'>Создать встречу</a>
+{% endif %}
+
+<table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Название встречи</th>
+        <th>Время начала встречи</th>
+        <th>Время окончания</th>
+        <th>Команда</th>
+        <th>Участники встречи</th>
+        <th></th>
+
+      </tr>
+    </thead>
+    <tbody>
+      {% for meeting in meetings_data %}
+        <tr>
+            <td>{{ meeting.id }}</td>
+            <td>{{ meeting.name }}</td>
+            <td>{{ meeting.datetime_beginning }}</td>
+            <td>{{ meeting.datetime_end }}</td>
+            <td>{{ meeting.team.name }}</td>
+            <td>
+                {% for user in meeting.participants %}
+                  {% if current_user.role == 'админ команды' %}
+                    {{ user.email }}
+                    <a href="{{ url_for('get_meetings_user', user_id=user.id) }}" class='btn btn-primary mb-3'>Встречи пользователя</a>
+                    <br>
+                  {% else %}
+                    {% if current_user.email == user.email %}
+                    {{ user.email }}
+                    <a href="{{ url_for('get_meetings_user', user_id=user.id) }}" class='btn btn-primary mb-3'>Встречи пользователя</a>
+                      <br>
+                    {% else %}
+                      {{ user.email }}
+                      <br>
+                    {% endif %}
+                  
+                  {% endif %}
+
+                {% endfor %}
+            </td>
+            <td>
+              {% if current_user.role == 'админ команды' %}
+                  <div class="delete-meeting-container">
+                    <button class="delete-meeting-btn" data-meeting-id="{{ meeting.id }}">Отменить встречу</button>
+                  </div>
+              {% endif %}
+            </td>
+
+      {% endfor %}
+    </tbody>
+  </table>
+
+<div id="messageArea" style="display: none; color: green; margin-top: 10px;"></div>
+<div id="errorMessage" style="display: none; color: red; margin-top: 10px;"></div>
+
+</div>
+<script>
+
+    const deleteButtons = document.querySelectorAll('.delete-meeting-btn');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', async function() {
+            const idMeetingToDelete = this.getAttribute('data-meeting-id');
+            if (!idMeetingToDelete) {
+                console.error('ID встречи не найден в data-атрибуте.');
+                return;
+            }
+
+            const messageArea = document.getElementById('messageArea');
+            const errorMessage = document.getElementById('errorMessage');
+            messageArea.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/delete_meeting', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                      id: idMeetingToDelete
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    messageArea.textContent = result.message;
+                    messageArea.style.display = 'block';
+                } else {
+                    if (result && result.detail) {
+                        errorMessage.textContent = `Ошибка: ${result.detail}`;
+                    } else {
+                        errorMessage.textContent = `Ошибка сервера (${response.status}): ${response.statusText}`;
+                    }
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+  
+                console.error('Network or JSON parsing error:', error);
+                errorMessage.style.display = 'block';
+            }
+        });
+    });
+</script>
+
+{% endblock %}

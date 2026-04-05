@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h1 class="text-center mb-4">Вход в систему</h1>
+            <form id="loginForm" class="p-4 border rounded shadow-sm">
+                <div class="mb-3">
+                    <label for="loginEmail" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="loginEmail" name="email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="loginPassword" class="form-label">Пароль</label>
+                    <input type="password" class="form-control" id="loginPassword" name="password" required>
+                </div>
+                <div id="loginErrorMessage" class="alert alert-danger mt-3" role="alert" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary w-100 mt-3">Войти</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    const form = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const emailError = document.getElementById('emailError');
+    const passwordError = document.getElementById('passwordError');
+
+    function validateEmail(email) {
+      // Простая проверка email, можно усложнить
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let valid = true;
+
+      emailError.textContent = '';
+      passwordError.textContent = '';
+
+      if (!validateEmail(emailInput.value)) {
+        emailError.textContent = 'Введите корректный email';
+        valid = false;
+      }
+
+      if (passwordInput.value.length < 6) {
+        passwordError.textContent = 'Пароль должен быть не менее 6 символов';
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      // Если валидация успешна, отправляем запрос на бекенд
+      const data = {
+        email: emailInput.value,
+        password: passwordInput.value,
+      };
+
+      try {
+        const response = await fetch('/login/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('access_token', data.access_token);
+          alert('Успешный вход');
+        } else {
+          const error = await response.json();
+          alert(error.detail || 'Ошибка входа');
+        }
+        const result = await response.json();
+        alert('Успешно! Токен: ' + result.access_token);
+        // Здесь можно сохранить токен и перенаправить пользователя
+      } catch (error) {
+        alert('Ошибка сети');
+      }
+    });
+
+const loginForm = document.querySelector('form');
+loginForm.addEventListener('submit', async (event) => {
+    event.preventDefault(); // Предотвращаем стандартную отправку формы
+
+    const formData = new FormData(loginForm);
+    const loginData = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await fetch('/login/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(loginData),
+        });
+
+        if (!response.ok) {
+            const errorDetails = await response.json();
+            alert(`Ошибка входа: ${errorDetails.detail}`);
+            return;
+        }
+
+        const tokens = await response.json();
+        localStorage.setItem('accessToken', tokens.access_token); // <-- Вот это важно!
+        // localStorage.setItem('refreshToken', tokens.refresh_token); // Если вы будете использовать refresh token
+
+        alert('Вход выполнен успешно!');
+        window.location.href = '/'; // Перенаправляем на страницу календаря
+
+    } catch (error) {
+        console.error('Ошибка при входе:', error);
+        alert('Произошла ошибка при входе.');
+    }
+});
+
+
+  </script>
+
+
+{% endblock %}

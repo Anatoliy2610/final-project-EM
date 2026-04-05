@@ -1,0 +1,87 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>Оценка задачи</h1>
+
+    {% if task %}
+        <form id="JobEvalutionTaskForm">
+            <input type="hidden" id="taskIdInput" name="id" value="{{ task.id }}">
+            <input type="hidden" id="taskNameInput" name="name" value="{{ task.name }}">
+            
+            <div class="form-group">
+                <label for="taskEvalution">"{{ task.name }}" оценивается для пользователя "{{ task.executor.email }}"</label>
+                <select class="form-control" id="taskEvalution" name="job_evaluation" required>
+                    <option value="">-- Выберите оценку --</option>
+                    <option value="1">Оценка 1</option>
+                    <option value="2">Оценка 2</option>
+                    <option value="3">Оценка 3</option>
+                    <option value="4">Оценка 4</option>
+                    <option value="5">Оценка 5</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Оценить</button>
+        </form>
+        <div id="messageArea" style="display: none; color: green; margin-top: 10px;"></div>
+        <div id="errorMessage" style="display: none; color: red; margin-top: 10px;"></div>
+
+    {% else %}
+        <p>Не удалось загрузить данные задачи.</p>
+    {% endif %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const form = document.getElementById('JobEvalutionTaskForm');
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                const messageArea = document.getElementById('messageArea');
+                const errorMessage = document.getElementById('errorMessage');
+                messageArea.style.display = 'none';
+                errorMessage.style.display = 'none';
+                const formData = new FormData(form);
+                const taskData = {};
+                for (const [key, value] of formData.entries()) {
+                    if (key === 'job_evaluation' && value !== '') {
+                        taskData[key] = parseInt(value, 10);
+                    } else {
+                        taskData[key] = value;
+                    }
+                }
+
+                try {
+                    const response = await fetch('/job_evaluation', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(taskData)
+                    });
+
+                    const result= await response.json();
+
+                    if (response.ok) {
+                        messageArea.textContent = result.message;
+                        messageArea.style.display = 'block';
+
+                    } else {
+                        let errorMsg = `Ошибка сервера (${response.status}): ${response.statusText}`;
+                        if (result && result.detail) {
+                            errorMsg = `Ошибка: ${result.detail}`;
+                        }
+                        errorMessage.textContent = errorMsg;
+                        errorMessage.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Network error:', error);
+                    errorMessage.textContent = 'Ошибка сети. Попробуйте позже.';
+                    errorMessage.style.display = 'block';
+                }
+            });
+        });
+    </script>
+{% endblock %}
+

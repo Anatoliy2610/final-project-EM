@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+
+<div class="container mt-5">
+    <h2 class="mb-3">Создание встречи</h2>
+    <form id="addMeetingForm" class="row g-3 needs-validation" novalidate>
+        <div class="col-md-6">
+            <label for="meetingName" class="form-label">Название встречи:</label>
+            <input type="text" class="form-control" id="meetingName" name="name" required>
+            <div class="invalid-feedback">Пожалуйста, введите название встречи.</div>
+        </div>
+        <div class="col-md-6">
+            <label for="participantsSelect" class="form-label">Участники встречи:</label>
+            <select multiple class="form-select" id="participantsSelect" name="participants" required>
+                {% for user in team_users %}
+                <option value="{{ user.id }}">{{ user.email }}</option>
+                {% endfor %}
+            </select>
+            <div class="invalid-feedback">Пожалуйста, выберите хотя бы одного участника.</div>
+        </div>
+        <div class="col-12">
+            <label for="date_begin" class="form-label">Дата и время начала встречи:</label>
+            <input type="datetime-local" class="form-control" id="date_begin" name="datetime_beginning" required>
+            <div class="invalid-feedback">Пожалуйста, выберите дату и время начала.</div>
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-info">Создать встречу</button>
+        </div>
+    </form>
+    <div id="messageArea" class="alert alert-success mt-3" role="alert" style="display: none;"></div>
+    <div id="errorMessage" class="alert alert-danger mt-3" role="alert" style="display: none;"></div>
+</div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const form = document.getElementById('addMeetingForm');
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                const messageArea = document.getElementById('messageArea');
+                const errorMessage = document.getElementById('errorMessage');
+                messageArea.style.display = 'none';
+                errorMessage.style.display = 'none';
+
+                const formData = new FormData(form);
+                const meetingData = {};
+                
+                const participants = [];
+                // Перебираем выбранные опции в <select multiple>
+                for (const option of document.getElementById('participantsSelect').selectedOptions) {
+                    participants.push(parseInt(option.value, 10));
+                }
+                meetingData['participants'] = participants;
+
+                for (const [key, value] of formData.entries()) {
+                    // Пропускаем 'participants', так как мы уже собрали их отдельно
+                    if (key !== 'participants') {
+                        meetingData[key] = value;
+                    }
+                }               
+
+                if (!meetingData.name || meetingData.name.trim() === '') {
+                    errorMessage.textContent = 'Ошибка: Название встречи не может быть пустым.';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                if (!meetingData.participants || meetingData.participants.length === 0) {
+                    errorMessage.textContent = 'Ошибка: Пожалуйста, выберите хотя бы одного участника.';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                if (!meetingData.datetime_beginning) {
+                    errorMessage.textContent = 'Ошибка: Пожалуйста, укажите дату начала встречи.';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/add_meeting', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(meetingData)
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        messageArea.textContent = result.message || 'Встреча успешно создана!';
+                        messageArea.style.display = 'block';
+                        form.reset(); // Очистить форму после успешного создания
+                    } else {
+                        let errorStr = `Ошибка сервера (${response.status}): ${response.statusText}`;
+                        if (result && result.detail) {
+                            errorStr = `Ошибка: ${result.detail}`;
+                        } else if (result && result.errors) {
+                            // Обработка ошибок валидации, если API возвращает их в таком формате
+                            errorStr = 'Ошибки в данных: ';
+                            for (const field in result.errors) {
+                                errorStr += `${field}: ${result.errors[field].join(', ')}. `;
+                            }
+                        }
+                        errorMessage.textContent = errorStr;
+                        errorMessage.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Ошибка при отправке запроса:', error);
+                    errorMessage.textContent = 'Произошла ошибка при отправке запроса. Пожалуйста, попробуйте снова.';
+                    errorMessage.style.display = 'block';
+                }
+            });
+        });
+    </script>
+
+{% endblock %}
+
+<style>
+    /* Пример базовых стилей, можете адаптировать под ваш проект */
+    .add-task-container {
+        max-width: 500px;
+        margin: 20px auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="date"],
+    .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box; /* Учитывает padding и border в общей ширине */
+    }
+    .form-group select[multiple] {
+        height: 150px; /* Высота для множественного выбора */
+    }
+    button[type="submit"] {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;      font-size: 16px;
+    }
+    button[type="submit"]:hover {
+        background-color: #0056b3;
+    }
+    .message-area {
+        margin-top: 15px;
+        padding: 10px;
+        border: 1px solid green;
+        border-radius: 4px;
+        color: green;
+        background-color: #eaffea;
+    }
+    .error-message {
+        margin-top: 15px;
+        padding: 10px;
+        border: 1px solid red;
+        border-radius: 4px;
+        color: red;
+        background-color: #ffeaea;
+    }
+</style>

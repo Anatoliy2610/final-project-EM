@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">Детали задачи</h2>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Задача "{{ task_user.name }}"</h5>
+            <p class="card-text">Исполнитель: <strong>{{ task_user.executor.email }}</strong></p>
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                    <tr>
+                        <th scope="row" class="col-md-3">ID</th>
+                        <td>{{ task_user.id }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Статус</th>
+                        <td>{{ task_user.status }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Дедлайн</th>
+                        <td>{{ task_user.dedline }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Описание</th>
+                        <td>{{ task_user.description }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Оценка работы</th>
+                        {% if task_user.job_evaluation %}
+                        <td>{{ task_user.job_evaluation }}</td>
+                        {% else %}
+                        <td></td>
+                        {% endif %}
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">Чат по задаче "{{ task_user.name }}"</h2>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Сообщение</th>
+                    <th scope="col">Дата отправки</th>
+                    <th scope="col">Отправитель</th>
+                </tr>
+    </thead>
+            <tbody>
+                {% for massage in chat %}
+                <tr>
+                    <td>{{ massage.message }}</td>
+                    <td>{{ massage.created_at }}</td>
+                    <td>{{ massage.sender.email }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<div class="container mt-4">
+    <h2 class="mb-3">Создание сообщения для задачи '{{ task_user.name }}' пользователю '{{ task_user.executor.email }}'</h2>
+    <form id="messageForm" class="row g-3">
+        <input type="hidden" id="taskIdInput" name="task_id" value="{{ task_user.id }}">
+        <div class="col-12">
+            <label for="messageInput" class="form-label">Сообщение:</label>
+            <textarea class="form-control" id="messageInput" name="message" rows="3" required></textarea>
+        </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Отправить сообщение</button>
+        </div>
+    </form>
+    <div id="messageArea" class="alert alert-success mt-3" role="alert" style="display: none;"></div>
+    <div id="errorMessage" class="alert alert-danger mt-3" role="alert" style="display: none;"></div>
+</div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const form = document.getElementById('messageForm');
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+
+                const messageArea = document.getElementById('messageArea');
+                const errorMessage = document.getElementById('errorMessage');
+                messageArea.style.display = 'none';
+                errorMessage.style.display = 'none';
+                const formData = new FormData(form);
+                const messageData = {};
+                for (const [key, value] of formData.entries()) {
+                    if (key === 'task_id' && value !== '') {
+                        messageData[key] = parseInt(value, 10);
+                    } else {
+                        messageData[key] = value;
+                    }
+                }
+
+                try {
+                    const response = await fetch('/add_message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(messageData)
+                    });
+
+                    const result= await response.json();
+
+                    if (response.ok) {
+                        messageArea.textContent = result.message;
+                        messageArea.style.display = 'block';
+
+                    } else {
+                        let errorMsg = `Ошибка сервера (${response.status}): ${response.statusText}`;
+                        if (result && result.detail) {
+                            errorMsg = `Ошибка: ${result.detail}`;
+                        }
+                        errorMessage.textContent = errorMsg;
+                        errorMessage.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Network error:', error);
+                    errorMessage.textContent = 'Ошибка сети. Попробуйте позже.';
+                    errorMessage.style.display = 'block';
+                }
+            });
+        });
+    </script>
+
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+{% if not current_user.team_id %}
+<a href='/add_team'>Создать команду</a>
+{% endif %}
+
+<table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>name</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for team in teams_data %}
+        <tr>
+          <td>{{ team.id }}</td>
+          <td>{{ team.name }}</td>
+          <td>
+            {% if team.id == current_user.team_id %}
+            <a href='/team' class='btn btn-primary mb-3'>Посмотреть состав команды</a>
+            <br>
+            <a href='/user_to_team' class='btn btn-primary mb-3'>добавить сотрудника в команду</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+
+
+{% endblock %}

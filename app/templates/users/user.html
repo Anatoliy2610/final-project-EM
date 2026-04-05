@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">Удаление аккаунта</h2>
+    <button id="deleteUserButton" class="btn btn-danger">Удалить мой аккаунт</button>
+    <div id="messageArea" class="alert alert-success mt-3" role="alert" style="display: none;"></div>
+    <div id="errorMessage" class="alert alert-danger mt-3" role="alert" style="display: none;"></div>
+</div>
+
+
+<div class="container mt-5">
+    <h2 class="mb-4">Профиль пользователя</h2>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Роль</th>
+                    <th scope="col">Команда</th>
+                    <th scope="col">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th scope="row">{{ current_user.id }}</th>
+                    <td>{{ current_user.email }}</td>
+                    <td>{{ current_user.role if current_user.role else 'роль отсутствует' }}</td>
+                    <td>
+                        {% if current_user.team_id %}
+                        {{ current_user.team.name }}
+                        {% else %}
+                        команда отсутствует
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/update_user/" class="btn btn-sm btn-outline-primary">Изменить профиль</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+
+
+<script>
+    document.getElementById('deleteUserButton').addEventListener('click', async function() {
+        const confirmDelete = confirm('Вы уверены, что хотите удалить свой аккаунт? Это действие необратимо.');
+
+        if (!confirmDelete) {
+            return; // Если пользователь отменил, ничего не делаем
+        }
+
+        const messageArea = document.getElementById('messageArea');
+        const errorMessage = document.getElementById('errorMessage');
+
+        messageArea.style.display = 'none';
+        errorMessage.style.display = 'none';
+        messageArea.textContent = '';
+        errorMessage.textContent = '';
+
+        try {
+            const response = await fetch('/delete_user', {
+                method: 'DELETE', // Используем метод DELETE
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Если требуется токен аутентификации, добавьте его сюда:
+                    // 'Authorization': `Bearer ${getAuthToken()}` 
+                }
+                // Для DELETE запроса тело обычно не требуется, если только сервер его не ожидает
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                messageArea.textContent = result.message;
+                messageArea.style.display = 'block';
+                // Опционально: перенаправить пользователя на страницу входа или главную страницу
+                // setTimeout(() => { window.location.href = '/login'; }, 2000); 
+            } else {
+                if (result && result.detail) {
+                    errorMessage.textContent = `Ошибка: ${result.detail}`;
+                } else {
+                    errorMessage.textContent = 'Произошла неизвестная ошибка при удалении.';
+                }
+                errorMessage.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            errorMessage.textContent = 'Ошибка сети. Попробуйте позже.';
+            errorMessage.style.display = 'block';
+        }
+    });
+
+    // Функция для получения токена аутентификации (если требуется)
+    // function getAuthToken() {
+    //     // Реализуйте получение токена из cookie или localStorage
+    //     // Например: return document.cookie.split('; ').find(row => row.startsWith('access_token=')).split('=')[1];
+    //     return null; // Заглушка
+    // }
+</script>
+
+
+{% endblock %}
