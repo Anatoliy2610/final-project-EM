@@ -13,6 +13,8 @@ test:
 linter:
 	ruff check app
 
+format:
+	ruff format app
 
 docker:
 	docker build -t final_app .

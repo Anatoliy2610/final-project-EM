@@ -1,5 +1,4 @@
-from sqlalchemy import (Column, DateTime, ForeignKey, Integer, String, Table,
-                        func)
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, func
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -38,7 +37,9 @@ class MessageModel(Base):
     message = Column(String)
     created_at = Column(DateTime, default=func.now())
     sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    task_id = Column(Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    task_id = Column(
+        Integer, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False
+    )
 
     sender = relationship("UserModel")
     task = relationship("TaskModel", secondary=chat_messages, back_populates="chat")

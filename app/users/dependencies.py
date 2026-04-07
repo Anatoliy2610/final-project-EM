@@ -1,18 +1,15 @@
+from datetime import datetime, timezone
+
+from fastapi import Depends, HTTPException, Request, status
+from jose import JWTError, jwt
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_db
-
-
-from fastapi import Depends, HTTPException, status, Request
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
-
 from app.users.auth import get_auth_data
 from app.users.crud import UserCRUD
 from app.users.models import UserModel
-
 
 
 async def get_current_user(
@@ -56,9 +53,9 @@ async def get_current_user(
             .options(
                 selectinload(UserModel.team),
                 selectinload(UserModel.meetings),
-                selectinload(UserModel.tasks)
-                )
+                selectinload(UserModel.tasks),
             )
+        )
         user = query.first()
         if user is None:
             return None

@@ -1,14 +1,12 @@
+from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import DatabaseError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError, DatabaseError
 
-
-from app.teams.models import TeamModel 
-from app.teams.utils import check_absence_user, check_availability_team, check_role, check_user_absence_role, check_user_admin, check_user_role, check_user_to_team
-from app.users.models import UserModel
 from app.core.config import logger
+from app.teams.models import TeamModel
+from app.users.models import UserModel
 
 
 class TeamCRUD:
@@ -20,7 +18,11 @@ class TeamCRUD:
         return query.all()
 
     async def get_team_db(self, user):
-        query = await self.db.execute(select(UserModel).filter(UserModel.team_id == user.team_id).options(selectinload(UserModel.team)))
+        query = await self.db.execute(
+            select(UserModel)
+            .filter(UserModel.team_id == user.team_id)
+            .options(selectinload(UserModel.team))
+        )
         return query.scalars().all()
 
     async def add_team_db(self, data_team, user):
@@ -37,26 +39,27 @@ class TeamCRUD:
             logger.error(f"Ошибка целостности данных при создании задачи: {e}")
             raise HTTPException(
                 status_code=409,
-                detail="Не удалось создать задачу из‑за конфликта данных"
+                detail="Не удалось создать задачу из‑за конфликта данных",
             )
         except DatabaseError as e:
             await self.db.rollback()
             logger.error(f"Ошибка БД при создании задачи: {e}")
             raise HTTPException(
-                status_code=500,
-                detail="Ошибка базы данных при создании задачи"
+                status_code=500, detail="Ошибка базы данных при создании задачи"
             )
         except Exception as e:
             await self.db.rollback()
             logger.critical(f"Критическая ошибка при создании задачи: {e}")
             raise HTTPException(
                 status_code=500,
-                detail="Произошла непредвиденная ошибка при создании задачи"
+                detail="Произошла непредвиденная ошибка при создании задачи",
             )
 
     async def add_user_db(self, user_data, new_user):
         try:
-            query = await self.db.execute(select(UserModel).filter(UserModel.email == new_user.email_user))
+            query = await self.db.execute(
+                select(UserModel).filter(UserModel.email == new_user.email_user)
+            )
             user = query.scalars().first()
             user.role = new_user.role
             user.team_id = user_data.team_id
@@ -66,26 +69,27 @@ class TeamCRUD:
             logger.error(f"Ошибка целостности данных при создании задачи: {e}")
             raise HTTPException(
                 status_code=409,
-                detail="Не удалось создать задачу из‑за конфликта данных"
+                detail="Не удалось создать задачу из‑за конфликта данных",
             )
         except DatabaseError as e:
             await self.db.rollback()
             logger.error(f"Ошибка БД при создании задачи: {e}")
             raise HTTPException(
-                status_code=500,
-                detail="Ошибка базы данных при создании задачи"
+                status_code=500, detail="Ошибка базы данных при создании задачи"
             )
         except Exception as e:
             await self.db.rollback()
             logger.critical(f"Критическая ошибка при создании задачи: {e}")
             raise HTTPException(
                 status_code=500,
-                detail="Произошла непредвиденная ошибка при создании задачи"
+                detail="Произошла непредвиденная ошибка при создании задачи",
             )
-    
+
     async def update_user_db(self, user, data_user):
         try:
-            query = await self.db.scalars(select(UserModel).filter(UserModel.email == data_user.email_user))
+            query = await self.db.scalars(
+                select(UserModel).filter(UserModel.email == data_user.email_user)
+            )
             user = query.first()
             user.role = data_user.role
             await self.db.commit()
@@ -94,26 +98,27 @@ class TeamCRUD:
             logger.error(f"Ошибка целостности данных при создании задачи: {e}")
             raise HTTPException(
                 status_code=409,
-                detail="Не удалось создать задачу из‑за конфликта данных"
+                detail="Не удалось создать задачу из‑за конфликта данных",
             )
         except DatabaseError as e:
             await self.db.rollback()
             logger.error(f"Ошибка БД при создании задачи: {e}")
             raise HTTPException(
-                status_code=500,
-                detail="Ошибка базы данных при создании задачи"
+                status_code=500, detail="Ошибка базы данных при создании задачи"
             )
         except Exception as e:
             await self.db.rollback()
             logger.critical(f"Критическая ошибка при создании задачи: {e}")
             raise HTTPException(
                 status_code=500,
-                detail="Произошла непредвиденная ошибка при создании задачи"
+                detail="Произошла непредвиденная ошибка при создании задачи",
             )
 
     async def delete_user_db(self, user, user_data):
         try:
-            query = await self.db.scalars(select(UserModel).filter(UserModel.email == user_data.email_user))
+            query = await self.db.scalars(
+                select(UserModel).filter(UserModel.email == user_data.email_user)
+            )
             user = query.first()
             user.role = None
             user.team_id = None
@@ -123,19 +128,18 @@ class TeamCRUD:
             logger.error(f"Ошибка целостности данных при создании задачи: {e}")
             raise HTTPException(
                 status_code=409,
-                detail="Не удалось создать задачу из‑за конфликта данных"
+                detail="Не удалось создать задачу из‑за конфликта данных",
             )
         except DatabaseError as e:
             await self.db.rollback()
             logger.error(f"Ошибка БД при создании задачи: {e}")
             raise HTTPException(
-                status_code=500,
-                detail="Ошибка базы данных при создании задачи"
+                status_code=500, detail="Ошибка базы данных при создании задачи"
             )
         except Exception as e:
             await self.db.rollback()
             logger.critical(f"Критическая ошибка при создании задачи: {e}")
             raise HTTPException(
                 status_code=500,
-                detail="Произошла непредвиденная ошибка при создании задачи"
+                detail="Произошла непредвиденная ошибка при создании задачи",
             )

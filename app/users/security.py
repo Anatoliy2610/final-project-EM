@@ -1,18 +1,10 @@
+from datetime import datetime, timedelta
+from fastapi import HTTPException, status
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
-from sqlalchemy import select
 
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY_TOKEN
-from app.core.database import async_session_maker
-from dotenv import load_dotenv
-import os
-from passlib.context import CryptContext
-from starlette.templating import Jinja2Templates
-from fastapi import Depends, HTTPException, status, Request
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta, timezone
-
-from app.users.models import UserModel
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

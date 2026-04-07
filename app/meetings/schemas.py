@@ -11,7 +11,7 @@ class MeetingSchema(BaseModel):
     name: str
     datetime_beginning: datetime
     datetime_end: datetime
-    team_id: int | None 
+    team_id: int | None
     team: TeamSchema
     participants: List[User]
 

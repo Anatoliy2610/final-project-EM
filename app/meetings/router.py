@@ -2,22 +2,14 @@ from typing import List
 
 from fastapi import APIRouter, Depends, Request
 
-
 from app.core.config import templates
 from app.core.exceptions import ExceptionService
 from app.core.validator import get_validator
 from app.meetings.crud import MeetingCRUD
 from app.meetings.dependencies import get_meeting_crud
+from app.meetings.schemas import MeetinAddSchema, MeetingSchema, MeetingSchemaDelete
 from app.users.dependencies import get_current_user
-
-
-from app.meetings.schemas import (MeetinAddSchema, MeetingSchema,
-                                  MeetingSchemaDelete)
-
 from app.users.models import UserModel
-
-
-
 
 router = APIRouter(tags=["Встречи"])
 
@@ -26,7 +18,7 @@ router = APIRouter(tags=["Встречи"])
 async def get_meetings(
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud),
 ):
     meetings_data = await meeting_crud.get_meetings_db(user_data=user_data)
     return templates.TemplateResponse(
@@ -40,7 +32,7 @@ async def get_meetings(
 async def get_add_meeting(
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud),
 ):
     team_users = await meeting_crud.get_team_users_db(user_data=user_data)
     return templates.TemplateResponse(
@@ -68,7 +60,7 @@ async def delete_meeting(
     data_meeting: MeetingSchemaDelete,
     user_data: UserModel = Depends(get_current_user),
     validator: ExceptionService = Depends(get_validator),
-    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud),
 ):
     await validator.check_user_admin(user_role=user_data.role)
     await meeting_crud.delete_meeting_db(data_meeting=data_meeting)
@@ -80,7 +72,7 @@ async def get_meetings_user(
     request: Request,
     user_id: int,
     user_data: UserModel = Depends(get_current_user),
-    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud),
 ):
     meetings = await meeting_crud.get_meetings_user_db(user_id=user_id)
     return templates.TemplateResponse(

@@ -1,14 +1,15 @@
 from typing import List
-from fastapi import (APIRouter, Depends, Form, Request, Response)
+
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import HTMLResponse
 
+from app.core.config import templates
 from app.core.exceptions import ExceptionService
 from app.core.validator import get_validator
 from app.users.crud import UserCRUD
 from app.users.dependencies import get_current_user, get_user_crud
 from app.users.models import UserModel
 from app.users.schemas import UpdateUser, User, UserAuth, UserCreate
-from app.core.config import templates
 
 router = APIRouter(tags=["Пользователь"])
 
@@ -16,9 +17,7 @@ router = APIRouter(tags=["Пользователь"])
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request, current_user: UserModel = Depends(get_current_user)):
     return templates.TemplateResponse(
-        request=request, 
-        name="base.html", 
-        context={"current_user": current_user}
+        request=request, name="base.html", context={"current_user": current_user}
     )
 
 
@@ -26,7 +25,7 @@ async def index(request: Request, current_user: UserModel = Depends(get_current_
 async def get_users(
     request: Request,
     current_user: UserModel = Depends(get_current_user),
-    user_crud: UserCRUD = Depends(get_user_crud)
+    user_crud: UserCRUD = Depends(get_user_crud),
 ):
     users_data = await user_crud.get_users_data()
     return templates.TemplateResponse(
@@ -42,17 +41,17 @@ async def show_register_form(
 ):
     return templates.TemplateResponse(
         request=request,
-        name="users/register.html", 
-        context={"request": request, "current_user": current_user}
+        name="users/register.html",
+        context={"request": request, "current_user": current_user},
     )
 
 
 @router.post("/register/")
 async def register_user(
-    user_data: UserCreate, 
+    user_data: UserCreate,
     user_crud: UserCRUD = Depends(get_user_crud),
     validator: ExceptionService = Depends(get_validator),
-    ):
+):
     await validator.check_user(user_data=user_data)
     await user_crud.add_db(user_data=user_data)
     return {"message": "Вы успешно зарегистрированы!"}
@@ -64,14 +63,14 @@ async def show_login_form(
 ):
     return templates.TemplateResponse(
         request=request,
-        name="users/login.html", 
-        context={"request": request, "current_user": current_user}
+        name="users/login.html",
+        context={"request": request, "current_user": current_user},
     )
 
 
 @router.post("/login/")
 async def auth_user(
-    user_data: UserAuth, 
+    user_data: UserAuth,
     user_crud: UserCRUD = Depends(get_user_crud),
     validator: ExceptionService = Depends(get_validator),
 ):
@@ -105,7 +104,9 @@ async def get_update_user(
     request: Request, current_user: UserModel = Depends(get_current_user)
 ):
     return templates.TemplateResponse(
-        request, "users/update_user.html", {"request": request, "current_user": current_user}
+        request,
+        "users/update_user.html",
+        {"request": request, "current_user": current_user},
     )
 
 

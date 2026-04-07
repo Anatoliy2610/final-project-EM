@@ -1,8 +1,4 @@
-from fastapi import HTTPException
 from fastapi.responses import JSONResponse
-from starlette import status
-
-from app.users.security import verify_password
 
 
 async def get_response(access_token):

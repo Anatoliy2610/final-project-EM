@@ -59,7 +59,6 @@ async def test_index_endpoint(async_client, mock_get_current_user):
 #         assert response_data["message"] == "Вы успешно зарегистрированы!"
 
 
-
 # @pytest.mark.asyncio
 # async def test_register_user_validation_error(async_client, mock_get_current_user):
 #     user_data = UserCreate(email="invalid-email", password="short")
@@ -93,5 +92,3 @@ async def test_index_endpoint(async_client, mock_get_current_user):
 #         assert response.status_code == 500
 #         response_data = response.json()
 #         assert "Ошибка базы данных" in response_data["detail"]
-
-

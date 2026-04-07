@@ -3,18 +3,18 @@ from sqladmin import Admin
 
 from app.admin.admin_views import MeetingAdmin, TaskAdmin, TeamAdmin, UserAdmin
 from app.calendar.router import router as calendar
+from app.core.database import Base, async_engine
 from app.meetings.router import router as meeting_router
 from app.tasks.router import router as task_router
 from app.teams.router import router as team_router
 from app.users.router import router as user_router
-
-from app.core.database import async_engine, Base
 
 
 async def init_models(app: FastAPI):
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         yield
+
 
 app = FastAPI(lifespan=init_models)
 
