@@ -1,7 +1,7 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
-from app.database import Base
+from app.core.database import Base
 
 meeting_participants = Table(
     "meeting_participants",

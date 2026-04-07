@@ -3,12 +3,14 @@
 
 {% block content %}
 
-<p>Состав команды {{ current_user.team.name }}</p>
+<h3>Состав команды {{ current_user.team.name }}</h3>
 <table class="table table-striped">
     <thead>
       <tr>
         <th>ID</th>
         <th>Email</th>
+        <th>Role</th>
+        <th></th>
         <th></th>
       </tr>
     </thead>
@@ -18,6 +20,10 @@
         <tr>
             <td>{{ user.id }}</td>
             <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>
+                <a href='/update_user_to_team?email={{ user.email }}&role={{ user.role }}' class='btn btn-primary mb-3'>Изменить роль</a>
+            </td>
             <td>
                 <div class="delete-user-container">
                 <button class="delete-user-btn" data-user-email="{{ user.email }}">Удалить из команды</button>
@@ -31,6 +37,7 @@
         <tr>
             <td>{{ user.id }}</td>
             <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
             <td></td>
         </tr>
     {% endfor %}
@@ -42,10 +49,9 @@
 <div id="errorMessage" style="display: none; color: red; margin-top: 10px;"></div>
 
 
+
 <script>
-
     const deleteButtons = document.querySelectorAll('.delete-user-btn');
-
     deleteButtons.forEach(button => {
         button.addEventListener('click', async function() {
             const userEmailToDelete = this.getAttribute('data-user-email');

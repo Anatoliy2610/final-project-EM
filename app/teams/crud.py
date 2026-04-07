@@ -1,45 +1,141 @@
 from sqlalchemy import select
-
-from app.teams.models import TeamModel
-from app.teams.utils import check_availability_team, check_role, check_user_absence_role
-
-
-
-async def get_team_db(name_team, db):
-    query = await db.scalars(select(TeamModel).filter(TeamModel.name == name_team))
-    team = query.first()
-    return team
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError, DatabaseError
 
 
-async def add_team_db(data_team, user_data, db):
-    query = await db.scalars(select(TeamModel).filter(TeamModel.name == data_team.name))
-    team = query.first()
-    check_availability_team(team=team)
-    check_user_absence_role(role=user_data.role)
-    db_team = TeamModel(name=data_team.name)
-    db.add(db_team)
-    user_data.team_id = team.id
-    user_data.role = "админ команды"
-    await db.commit()
-    await db.refresh(db_team)
+from app.teams.models import TeamModel 
+from app.teams.utils import check_absence_user, check_availability_team, check_role, check_user_absence_role, check_user_admin, check_user_role, check_user_to_team
+from app.users.models import UserModel
+from app.core.config import logger
 
 
-async def update_data_user_db(data_user, data_team, db):
-    query = await db.scalars(select(TeamModel).filter(TeamModel.name == data_team.name))
-    new_team_id = query.first()
-    data_user.team_id = new_team_id.id
-    data_user.role = "админ команды"
-    await db.commit()
+class TeamCRUD:
+    def __init__(self, db: AsyncSession):
+        self.db = db
 
+    async def get_teams_db(self):
+        query = await self.db.scalars(select(TeamModel))
+        return query.all()
 
-async def add_user_to_team_db(user, admin_data, new_data_user, db):
-    check_role(new_data_user.role)
-    user.role = new_data_user.role
-    user.team_id = admin_data.team_id
-    await db.commit()
+    async def get_team_db(self, user):
+        query = await self.db.execute(select(UserModel).filter(UserModel.team_id == user.team_id).options(selectinload(UserModel.team)))
+        return query.scalars().all()
 
+    async def add_team_db(self, data_team, user):
+        try:
+            db_team = TeamModel(name=data_team.name)
+            self.db.add(db_team)
+            await self.db.commit()
+            await self.db.refresh(db_team)
+            user.team_id = db_team.id
+            user.role = "админ команды"
+            await self.db.commit()
+        except IntegrityError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка целостности данных при создании задачи: {e}")
+            raise HTTPException(
+                status_code=409,
+                detail="Не удалось создать задачу из‑за конфликта данных"
+            )
+        except DatabaseError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка БД при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Ошибка базы данных при создании задачи"
+            )
+        except Exception as e:
+            await self.db.rollback()
+            logger.critical(f"Критическая ошибка при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Произошла непредвиденная ошибка при создании задачи"
+            )
 
-async def update_user_to_team_db(user, new_role, db):
-    check_role(new_role)
-    user.role = new_role
-    await db.commit()
+    async def add_user_db(self, user_data, new_user):
+        try:
+            query = await self.db.execute(select(UserModel).filter(UserModel.email == new_user.email_user))
+            user = query.scalars().first()
+            user.role = new_user.role
+            user.team_id = user_data.team_id
+            await self.db.commit()
+        except IntegrityError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка целостности данных при создании задачи: {e}")
+            raise HTTPException(
+                status_code=409,
+                detail="Не удалось создать задачу из‑за конфликта данных"
+            )
+        except DatabaseError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка БД при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Ошибка базы данных при создании задачи"
+            )
+        except Exception as e:
+            await self.db.rollback()
+            logger.critical(f"Критическая ошибка при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Произошла непредвиденная ошибка при создании задачи"
+            )
+    
+    async def update_user_db(self, user, data_user):
+        try:
+            query = await self.db.scalars(select(UserModel).filter(UserModel.email == data_user.email_user))
+            user = query.first()
+            user.role = data_user.role
+            await self.db.commit()
+        except IntegrityError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка целостности данных при создании задачи: {e}")
+            raise HTTPException(
+                status_code=409,
+                detail="Не удалось создать задачу из‑за конфликта данных"
+            )
+        except DatabaseError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка БД при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Ошибка базы данных при создании задачи"
+            )
+        except Exception as e:
+            await self.db.rollback()
+            logger.critical(f"Критическая ошибка при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Произошла непредвиденная ошибка при создании задачи"
+            )
+
+    async def delete_user_db(self, user, user_data):
+        try:
+            query = await self.db.scalars(select(UserModel).filter(UserModel.email == user_data.email_user))
+            user = query.first()
+            user.role = None
+            user.team_id = None
+            await self.db.commit()
+        except IntegrityError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка целостности данных при создании задачи: {e}")
+            raise HTTPException(
+                status_code=409,
+                detail="Не удалось создать задачу из‑за конфликта данных"
+            )
+        except DatabaseError as e:
+            await self.db.rollback()
+            logger.error(f"Ошибка БД при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Ошибка базы данных при создании задачи"
+            )
+        except Exception as e:
+            await self.db.rollback()
+            logger.critical(f"Критическая ошибка при создании задачи: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Произошла непредвиденная ошибка при создании задачи"
+            )

@@ -5,7 +5,7 @@
 
 
     <div class="add-team-container">
-        <h1>Добавить или обновить пользователя в команде</h1>
+        <h1>Добавить пользователя в команде</h1>
         <form id="addUserTeam">
             <div class="form-group">
                 <label for="email_user">Email пользователя:</label>
@@ -28,7 +28,7 @@
 
 <script>
     document.getElementById('addUserTeam').addEventListener('submit', async function(event) {
-        event.preventDefault(); // Предотвращаем стандартную отправку формы
+        event.preventDefault();
         const EmailInput = document.getElementById('email_user');
         const roleSelect = document.getElementById('role_user');
         const messageArea = document.getElementById('messageArea');
@@ -49,16 +49,10 @@
         };
 
         try {
-            // Получаем CSRF токен, если используется Django
-            // const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value; // Раскомментируйте, если используете Django
-
-            const response = await fetch('/user_to_team', {
+            const response = await fetch('/add_user_to_team', {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    // Если требуется токен аутентификации, добавьте его сюда:
-                    // 'Authorization': `Bearer ${getAuthToken()}`, 
-                    // 'X-CSRFToken': csrftoken // Добавьте CSRF токен, если используете Django
                 },
                 body: JSON.stringify(userData)
             });
@@ -66,7 +60,7 @@
             if (response.ok) {
                 messageArea.textContent = result.message;
                 messageArea.style.display = 'block';
-                teamNameInput.value = ''; // Очищаем поле ввода после успешного создания
+                teamNameInput.value = '';
             } else {
                 if (result && result.detail) {
                     errorMessage.textContent = `Ошибка: ${result.detail}`;

@@ -9,7 +9,7 @@
   <a href='/add_task' class='btn btn-primary mb-3'>Создать задачу</a>
 {% endif %}
 <br>
-<a href="{{ url_for('get_tasks_user', task_id=current_user.id) }}" class='btn btn-primary mb-3'>Просмотр своих задач</a>
+<a href="{{ url_for('get_tasks_user', executor_id=current_user.id) }}" class='btn btn-primary mb-3'>Просмотр своих задач</a>
 <table class="table table-striped">
     <thead>
       <tr>
@@ -38,7 +38,7 @@
             {% if current_user.email == task.executor.email %}
             <td>{{ task.name }}
               <br>
-              <a href="{{ url_for('get_task_user', task_id=task.id) }}" class='btn btn-primary mb-3'>Посмотреть  задачу</a>
+              <a href="{{ url_for('get_task_user', task_id=task.id) }}" class='btn btn-primary mb-3'>Посмотреть задачу</a>
             </td>
             {% else %}
             <td>{{ task.name }}</td>
@@ -48,19 +48,20 @@
             {{ task.executor.email }}
             {% if current_user.role == 'админ команды' %}
             <br>
-            <a href="{{ url_for('get_tasks_user', task_id=task.executor_id) }}" class='btn btn-primary mb-3'>Задачи пользователя</a>
+            <a href="{{ url_for('get_tasks_user', executor_id=task.executor_id) }}" class='btn btn-primary mb-3'>Задачи пользователя</a>
             {% endif %}
           </td>
           <td>{{ task.status }}</td>
-          <td>{{ task.dedline }}</td>
+          <td>{{ task.dedline.strftime('%d.%m.%Y %H:%M') }}</td>
+          <td>{{ task.description }}</td>
           <td>
-            {{ task.description }}
+            {{ task.job_evaluation }}
             <br>
             {% if current_user.role == 'админ команды' %}
                 <a href="{{ url_for('get_job_evaluation', task_id=task.id) }}" class='btn btn-primary mb-3'>Оценить задачу</a>
             {% endif %}
           </td>
-          <td>{{ task.job_evaluation }}</td>
+
           <td>{{ task.team.name }}</td>
           <td>
             {% if current_user.role == 'админ команды' %}

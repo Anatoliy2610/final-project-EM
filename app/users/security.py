@@ -1,8 +1,8 @@
 
 from sqlalchemy import select
 
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY_TOKEN
-from app.database import async_session_maker
+from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY_TOKEN
+from app.core.database import async_session_maker
 from dotenv import load_dotenv
 import os
 from passlib.context import CryptContext
@@ -18,15 +18,15 @@ from app.users.models import UserModel
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def get_password_hash(password: str):
+async def get_password_hash(password: str):
     return pwd_context.hash(password)
 
 
-def verify_password(plain_password: str, hashed_password: str):
+async def verify_password(plain_password: str, hashed_password: str):
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: timedelta = None):
+async def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now() + expires_delta
@@ -37,7 +37,7 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-def decode_access_token(token: str):
+async def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY_TOKEN, algorithms=[ALGORITHM])
         return payload
@@ -47,4 +47,3 @@ def decode_access_token(token: str):
             detail="Недействительный токен",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    

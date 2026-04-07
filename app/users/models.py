@@ -1,7 +1,7 @@
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from app.database import Base
+from app.core.database import Base
 from app.meetings.models import meeting_participants
 
 
@@ -11,7 +11,7 @@ class UserModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True)
     role = Column(String, nullable=True)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=True)
     team = relationship("TeamModel")
     hash_password = Column(String)
     meetings = relationship(

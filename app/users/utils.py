@@ -1,19 +1,18 @@
 from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from starlette import status
 
 from app.users.security import verify_password
 
 
-def check_user(user):
-    if user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="Пользователь уже существует"
-        )
-
-
-def check_data_login(user, user_data):
-    if user is None or not verify_password(user_data.password, user.hash_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверное имя пользователя или пароль",
-        )
+async def get_response(access_token):
+    response = JSONResponse(
+        content={"access_token": access_token, "refresh_token": None}
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,  # Защита от XSS
+        samesite="lax",  # Защита от CSRF
+    )
+    return response

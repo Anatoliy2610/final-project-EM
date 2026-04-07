@@ -1,21 +1,22 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session, selectinload
 
-from app.config import get_db, templates
+
+from app.core.config import templates
+from app.core.exceptions import ExceptionService
+from app.core.validator import get_validator
+from app.meetings.crud import MeetingCRUD
+from app.meetings.dependencies import get_meeting_crud
 from app.users.dependencies import get_current_user
 
-from app.meetings.models import MeetingModel
+
 from app.meetings.schemas import (MeetinAddSchema, MeetingSchema,
                                   MeetingSchemaDelete)
-from app.meetings.utils import (add_meeting_db, check_meeting,
-                                check_not_meeting, check_participants,
-                                check_user_admin, delete_meeting_db)
+
 from app.users.models import UserModel
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+
 
 
 router = APIRouter(tags=["Встречи"])
@@ -25,17 +26,9 @@ router = APIRouter(tags=["Встречи"])
 async def get_meetings(
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
 ):
-    query = await db.execute(select(MeetingModel).filter(
-        MeetingModel.team_id == user_data.team_id)
-        .options(
-            # selectinload(MeetingModel.participants).joinedload(UserModel.email),
-            selectinload(MeetingModel.team),
-            selectinload(MeetingModel.participants)
-            )
-        )
-    meetings_data = query.scalars().all()
+    meetings_data = await meeting_crud.get_meetings_db(user_data=user_data)
     return templates.TemplateResponse(
         request=request,
         name="meetings/meetings.html",
@@ -47,10 +40,9 @@ async def get_meetings(
 async def get_add_meeting(
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
 ):
-    query = await db.scalars(select(UserModel).filter(UserModel.team_id == user_data.team_id))
-    team_users = query.all()
+    team_users = await meeting_crud.get_team_users_db(user_data=user_data)
     return templates.TemplateResponse(
         request,
         "meetings/add_meeting.html",
@@ -62,25 +54,12 @@ async def get_add_meeting(
 async def add_meeting(
     data_meeting: MeetinAddSchema,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud),
+    validator: ExceptionService = Depends(get_validator),
 ):
-
-    check_user_admin(user_role=user_data.role)
-    query_meeting = await db.scalars(select(MeetingModel).filter(
-        MeetingModel.datetime_beginning <= data_meeting.datetime_beginning,
-        data_meeting.datetime_beginning <= MeetingModel.datetime_end,
-    ))
-    meeting = query_meeting.first()
-    check_meeting(meeting=meeting)
-    query_participants = await db.scalars(select(UserModel).filter(
-                UserModel.id.in_(data_meeting.participants),
-                UserModel.team_id == user_data.team_id,
-    ))
-    participants = query_participants.all()
-    check_participants(participants=participants, user_data=user_data)
-    await add_meeting_db(
-        data_meeting=data_meeting, user_data=user_data, participants=participants, db=db
-    )
+    await validator.check_user_admin(user_role=user_data.role)
+    await validator.check_meeting(data_meeting=data_meeting)
+    await meeting_crud.add_meeting_db(user_data=user_data, data_meeting=data_meeting)
     return {"message": f"Назначена встреча в {data_meeting.datetime_beginning}"}
 
 
@@ -88,16 +67,12 @@ async def add_meeting(
 async def delete_meeting(
     data_meeting: MeetingSchemaDelete,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    validator: ExceptionService = Depends(get_validator),
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
 ):
-    check_user_admin(user_role=user_data.role)
-    query = await db.scalars(select(MeetingModel).filter(MeetingModel.id == data_meeting.id))
-    meeting = query.first()
-    check_not_meeting(meeting=meeting)
-    await delete_meeting_db(meeting=meeting, db=db)
-    return {
-        "message": f"Удалена встреча '{meeting.name}' начало в {meeting.datetime_beginning}"
-    }
+    await validator.check_user_admin(user_role=user_data.role)
+    await meeting_crud.delete_meeting_db(data_meeting=data_meeting)
+    return {"message": "Встреча удалена"}
 
 
 @router.get("/meetings_user/{user_id}", response_model=List[MeetingSchema])
@@ -105,14 +80,9 @@ async def get_meetings_user(
     request: Request,
     user_id: int,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    meeting_crud: MeetingCRUD = Depends(get_meeting_crud)
 ):
-    query = await db.scalars(select(UserModel).filter(UserModel.id == user_id).options(
-        selectinload(UserModel.meetings)
-    ))
-    meetings = query.first()
-
-
+    meetings = await meeting_crud.get_meetings_user_db(user_id=user_id)
     return templates.TemplateResponse(
         request,
         "meetings/meetings_user.html",

@@ -1,16 +1,16 @@
 from sqlalchemy import select
 
-from app.database import async_session_maker
+from app.core.database import async_session_maker
 from dotenv import load_dotenv
-import os
-from passlib.context import CryptContext
+# import os
+# from passlib.context import CryptContext
 from starlette.templating import Jinja2Templates
-from fastapi import Depends, HTTPException, status, Request
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta, timezone
+# from fastapi import Depends, HTTPException, status, Request
+# from jose import JWTError, jwt
+# from datetime import datetime, timedelta, timezone
 
-from app.users.models import UserModel
+# from app.users.models import UserModel
+import logging
 
 
 load_dotenv()
@@ -22,6 +22,7 @@ ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 templates = Jinja2Templates(directory="app/templates")
+logger = logging.getLogger(__name__)
 
 
 async def get_db():

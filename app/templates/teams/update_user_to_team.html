@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+
+
+<div class="add-team-container">
+    <h1>Обновить пользователя в команде</h1>
+    <form id="UpdateUserTeam">
+        <div class="form-group">
+            <label for="email_user">Email пользователя:</label>
+            <input type="email" class="form-control" id="email_user" name="email_user" readonly>
+        </div>
+        <div class="form-group">
+            <label for="role">Роль:</label>
+            <select class="form-control" id="role" name="role" required>
+                <option value="">Выберите роль</option>
+                <option value="менеджер">менеджер</option>
+                <option value="сотрудник">сотрудник</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Обновить роль</button>
+    </form>
+    <div id="messageArea" class="message-area" style="display: none;"></div>
+    <div id="errorMessage" class="error-message" style="display: none;"></div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('UpdateUserTeam');
+    const messageArea = document.getElementById('messageArea');
+    const errorMessage = document.getElementById('errorMessage');
+    const emailInput = document.getElementById('email_user');
+    const roleSelect = document.getElementById('role');
+
+    // Функция для получения параметров из URL
+    function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        return {
+            email: params.get('email'),
+            role: params.get('role')
+        };
+    }
+
+    // Заполняем форму данными из URL
+    const urlParams = getUrlParams();
+    if (urlParams.email) {
+        emailInput.value = urlParams.email;
+    }
+    if (urlParams.role) {
+        // Устанавливаем выбранную роль
+        const option = roleSelect.querySelector(`option[value="${urlParams.role}"]`);
+        if (option) {
+            option.selected = true;
+        }
+    }
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        // Скрываем предыдущие сообщения
+        messageArea.style.display = 'none';
+        errorMessage.style.display = 'none';
+
+        // Собираем данные из формы
+        const formData = {
+            email_user: emailInput.value,
+            role: roleSelect.value
+        };
+
+        try {
+            const response = await fetch('/update_user_to_team', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Ошибка при обновлении роли пользователя');
+            }
+
+            // Успешный ответ
+            const result = await response.json();
+
+            // Показываем сообщение об успехе
+            messageArea.textContent = result.message || 'Роль пользователя успешно обновлена!';
+            messageArea.style.display = 'block';
+            messageArea.className = 'message-area success';
+
+            // Очищаем форму
+            form.reset();
+
+        } catch (error) {
+            // Обрабатываем ошибки
+            errorMessage.textContent = error.message;
+            errorMessage.style.display = 'block';
+            errorMessage.className = 'error-message error';
+        }
+    });
+});
+</script>
+{% endblock %}

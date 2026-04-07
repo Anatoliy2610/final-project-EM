@@ -1,18 +1,16 @@
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.config import get_db
-from app.database import async_session_maker
-from dotenv import load_dotenv
-import os
-from passlib.context import CryptContext
-from starlette.templating import Jinja2Templates
+from app.core.config import get_db
+
+
 from fastapi import Depends, HTTPException, status, Request
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app.users.auth import get_auth_data
+from app.users.crud import UserCRUD
 from app.users.models import UserModel
 
 
@@ -27,7 +25,7 @@ async def get_current_user(
     if not access_token:
         return None
     try:
-        auth_config = get_auth_data()
+        auth_config = await get_auth_data()
         payload = jwt.decode(
             access_token,
             auth_config["secret_key"],
@@ -55,7 +53,11 @@ async def get_current_user(
         query = await db.scalars(
             select(UserModel)
             .filter(UserModel.id == int(user_id_str))
-            .options(selectinload(UserModel.team),)
+            .options(
+                selectinload(UserModel.team),
+                selectinload(UserModel.meetings),
+                selectinload(UserModel.tasks)
+                )
             )
         user = query.first()
         if user is None:
@@ -78,3 +80,6 @@ async def get_current_user(
             detail="Внутренняя ошибка сервера при аутентификации",
         )
 
+
+async def get_user_crud(db: AsyncSession = Depends(get_db)) -> UserCRUD:
+    return UserCRUD(db)

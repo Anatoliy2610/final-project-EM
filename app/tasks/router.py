@@ -3,18 +3,19 @@ from typing import List
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.config import get_db, templates
+from app.core.config import get_db, templates
+from app.core.exceptions import ExceptionService
+from app.core.validator import get_validator
+from app.tasks.crud import TaskCRUD
+from app.tasks.dependencies import get_task_crud
 from app.users.dependencies import get_current_user
 from app.tasks.models import MessageModel, TaskModel
 from app.tasks.schemas import (EvaluationSchema, JobResultSchema,
                                MessageAddSchema, TaskAddSchema,
                                TaskDeleteSchema, TaskGetResponseSchema,
                                TaskUpdateSchema)
-from app.tasks.utils import (add_evaluation_db, add_message_db,
-                             check_absence_task, check_availability_task,
-                             check_executor, check_user_admin,
-                             get_average_grade, task_add_db, task_delete_db,
-                             task_update_db)
+from app.tasks.utils import (check_absence_task, check_availability_task,
+                             check_executor, check_user_admin)
 from app.users.models import UserModel
 
 from sqlalchemy import select
@@ -23,20 +24,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter(tags=["Задачи"])
 
 
+
 @router.get("/tasks")
 async def get_tasks(
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    query = await db.execute(
-        select(TaskModel).filter(TaskModel.team_id == user_data.team_id)
-        .options(
-            selectinload(TaskModel.executor),
-            selectinload(TaskModel.team),
-            selectinload(TaskModel.chat),
-            ).order_by(TaskModel.id))
-    data_tasks = query.scalars().all()
+    data_tasks = await task_crud.get_tasks_db(user=user_data)
     return templates.TemplateResponse(
         request=request,
         name="tasks/tasks.html",
@@ -48,10 +43,9 @@ async def get_tasks(
 async def get_add_task(
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    query = await db.scalars(select(UserModel).filter(UserModel.team_id == user_data.team_id))
-    team_users = query.all()
+    team_users = await task_crud.get_data_for_add_task(user=user_data)
     return templates.TemplateResponse(
         request=request,
         name="tasks/add_task.html",
@@ -63,39 +57,14 @@ async def get_add_task(
 async def add_task(
     data_task: TaskAddSchema,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    check_user_admin(user_data.role)
-    query_executor = await db.scalars(select(UserModel).filter(
-        UserModel.id == data_task.executor_id,
-        UserModel.team_id == user_data.team_id,
-    ))
-    executor = query_executor.first()
-    check_executor(executor)
-    query_task = await db.scalars(select(TaskModel).filter(
-            TaskModel.name == data_task.name,
-            TaskModel.executor_id == data_task.executor_id,
-        ))
-    task = query_task.first()
-    check_availability_task(task)
-    await task_add_db(data_task=data_task, executor=executor, db=db)
-    return {"message": f"Задача зарегистрирована для {executor.email}"}
-
-
-@router.post("/add_message")
-async def add_message_chat(
-    data_chat: MessageAddSchema,
-    user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    query_task = await db.scalars(select(TaskModel).filter(
-            TaskModel.id == data_chat.task_id, 
-            TaskModel.team_id == user_data.team_id
-        ))
-    task = query_task.first()
-    check_absence_task(task=task)
-    await add_message_db(data_chat=data_chat, user_data=user_data, task=task, db=db)
-    return {"message": f"Добавлено сообщение в чат к задаче {task.name}"}
+    validator: ExceptionService = Depends(get_validator),
+    task_crud: TaskCRUD = Depends(get_task_crud)
+):  
+    await validator.check_user_admin(user_role=user_data.role)
+    await validator.check_executor(data_task=data_task, user=user_data)
+    await validator.check_availability_task(data_task=data_task)
+    await task_crud.add_task_db(user=user_data, data_task=data_task)
+    return {"message": f"Задача зарегистрирована"}
 
 
 @router.get("/update_task/{task_id}", response_model=TaskGetResponseSchema)
@@ -103,26 +72,19 @@ async def get_update_task(
     task_id: int,
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    validator: ExceptionService = Depends(get_validator),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    check_user_admin(user_data.role)
-    query_task = await db.scalars(select(TaskModel).filter(
-            TaskModel.id == task_id,
-            TaskModel.team_id == user_data.team_id
-        ))
-    task = query_task.first()
-    query_team = await db.scalars(select(UserModel).filter(
-            UserModel.team_id == user_data.team_id
-        ))
-    team_users = query_team.all()
+    await validator.check_user_admin(user_role=user_data.role)
+    result = await task_crud.get_data_for_update(task_id=task_id, user_data=user_data)
     return templates.TemplateResponse(
         request,
         "tasks/update_task.html",
         {
             "request": request,
             "current_user": user_data,
-            "task": task,
-            "team_users": team_users,
+            "task": result.get('task'),
+            "team_users": result.get('team_users'),
         },
     )
 
@@ -131,16 +93,12 @@ async def get_update_task(
 async def update_task(
     data_task: TaskUpdateSchema,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    validator: ExceptionService = Depends(get_validator),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    check_user_admin(user_data.role)
-    query = await db.scalars(select(TaskModel).filter(
-            TaskModel.id == data_task.id,
-            TaskModel.team_id == user_data.team_id
-        ))
-    task = query.first()
-    check_absence_task(task)
-    await task_update_db(data_task=data_task, db=db, task=task)
+    await validator.check_user_admin(user_role=user_data.role)
+    await validator.check_absence_task(user=user_data, data_task=data_task)
+    await task_crud.update_task_db(user=user_data, data_task=data_task)
     return {"message": f"Задача {data_task.id} изменена"}
 
 
@@ -148,18 +106,13 @@ async def update_task(
 async def delete_task(
     data_task: TaskDeleteSchema,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    validator: ExceptionService = Depends(get_validator),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    check_user_admin(user_data.role)
-    query = await db.scalars(select(TaskModel).filter(
-            TaskModel.id == data_task.id,
-            TaskModel.executor_id == data_task.executor_id,
-            TaskModel.team_id == user_data.team_id,
-        ))
-    task = query.first()
-    check_absence_task(task)
-    await task_delete_db(db=db, task=task)
-    return {"message": f"Задача {task.name} удалена"}
+    await validator.check_user_admin(user_role=user_data.role)
+    await validator.check_absence_task(user=user_data, data_task=data_task)
+    await task_crud.delete_task_db(user=user_data, data_task=data_task)
+    return {"message": "Задача удалена"}
 
 
 @router.get("/job_evaluation/{task_id}", response_model=TaskGetResponseSchema)
@@ -167,16 +120,11 @@ async def get_job_evaluation(
     task_id: int,
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    validator: ExceptionService = Depends(get_validator),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    check_user_admin(user_data.role)
-    query = await db.scalars(select(TaskModel).filter(
-            TaskModel.id == task_id, 
-            TaskModel.team_id == user_data.team_id
-        ).options(
-            selectinload(TaskModel.executor)
-        ))
-    task = query.first()
+    await validator.check_user_admin(user_role=user_data.role)
+    task = await task_crud.get_data_task_db(task_id=task_id, user_data=user_data)
     return templates.TemplateResponse(
         request,
         "tasks/job_evaluation.html",
@@ -188,65 +136,56 @@ async def get_job_evaluation(
 async def job_evaluation(
     data_task: EvaluationSchema,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    validator: ExceptionService = Depends(get_validator),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-
-    check_user_admin(user_data.role)
-    query = await db.scalars(select(TaskModel).filter(
-            TaskModel.id == data_task.id,
-            TaskModel.name == data_task.name,
-            TaskModel.team_id == user_data.team_id,
-        ))
-    task = query.first()
-    check_absence_task(task)
-    await add_evaluation_db(job_evaluation=data_task.job_evaluation, task=task, db=db)
+    await validator.check_user_admin(user_role=user_data.role)
+    await validator.check_absence_task(user=user_data, data_task=data_task)
+    await validator.check_job_evaluation(job_evaluation=data_task.job_evaluation)
+    await task_crud.patch_job_evaluation(user=user_data, data_task=data_task)
     return {
         "message": f"Задача {data_task.name} выполнена на {data_task.job_evaluation} баллов"
     }
 
 
-# @router.get("/tasks_user", response_model=List[JobResultSchema])
-@router.get("/tasks_user/{task_id}")
+@router.post("/add_message")
+async def add_message_chat(
+    data_chat: MessageAddSchema,
+    user_data: UserModel = Depends(get_current_user),
+    task_crud: TaskCRUD = Depends(get_task_crud)
+):
+    await task_crud.add_message_db(user=user_data, data_chat=data_chat)
+    return {"message": "Добавлено сообщение в чат к задаче"}
+
+
+@router.get("/tasks_user/{executor_id}")
 async def get_tasks_user(
-    task_id: int,
+    executor_id: int,
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-    average_grade = await get_average_grade(task_id=task_id, db=db)
-    query = await db.scalars(select(TaskModel).filter(
-        TaskModel.executor_id == task_id
-    ))
-    tasks_user = query.all()
+    tasks_user = await task_crud.get_tasks_user_db(executor_id)
     return templates.TemplateResponse(
         request,
         "tasks/tasks_user.html",
         {
             "request": request,
             "current_user": user_data,
-            "tasks_user": tasks_user,
-            "average_grade": average_grade,
+            "tasks_user": tasks_user.get('tasks_user'),
+            "average_grade": round(tasks_user.get('average_grade'), 1),
         },
     )
 
 
-# @router.get("/task_user/{task_id}", response_model=List[JobResultSchema])
 @router.get("/task_user/{task_id}")
 async def get_task_user(
     task_id: int,
     request: Request,
     user_data: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    task_crud: TaskCRUD = Depends(get_task_crud)
 ):
-
-    query = await db.execute(select(TaskModel).filter(TaskModel.id == task_id).options(
-        selectinload(TaskModel.executor),
-        selectinload(TaskModel.team),
-        selectinload(TaskModel.chat).joinedload(MessageModel.sender),
-
-        ))
-    task_user = query.scalars().first()
-
+    task_user = await task_crud.get_task_user_db(task_id=task_id)
     return templates.TemplateResponse(
         request,
         "tasks/task.html",

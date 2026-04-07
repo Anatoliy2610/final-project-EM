@@ -1,19 +1,14 @@
 from typing import List
+from fastapi import (APIRouter, Depends, Form, Request, Response)
+from fastapi.responses import HTMLResponse
 
-from fastapi import (APIRouter, Depends, Form, HTTPException, Request,
-                     Response, status)
-from fastapi.responses import HTMLResponse, JSONResponse
-from sqlalchemy.orm import Session, selectinload
-
-
-from app.users.crud import add_db, delete_db, get_response, get_users_data, update_db
-from app.users.dependencies import get_current_user
+from app.core.exceptions import ExceptionService
+from app.core.validator import get_validator
+from app.users.crud import UserCRUD
+from app.users.dependencies import get_current_user, get_user_crud
 from app.users.models import UserModel
 from app.users.schemas import UpdateUser, User, UserAuth, UserCreate
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.config import get_db, templates
+from app.core.config import templates
 
 router = APIRouter(tags=["Пользователь"])
 
@@ -31,9 +26,9 @@ async def index(request: Request, current_user: UserModel = Depends(get_current_
 async def get_users(
     request: Request,
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    user_crud: UserCRUD = Depends(get_user_crud)
 ):
-    users_data = await get_users_data(db=db)
+    users_data = await user_crud.get_users_data()
     return templates.TemplateResponse(
         request=request,
         name="users/users.html",
@@ -53,8 +48,13 @@ async def show_register_form(
 
 
 @router.post("/register/")
-async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    await add_db(user_data=user_data, db=db)
+async def register_user(
+    user_data: UserCreate, 
+    user_crud: UserCRUD = Depends(get_user_crud),
+    validator: ExceptionService = Depends(get_validator),
+    ):
+    await validator.check_user(user_data=user_data)
+    await user_crud.add_db(user_data=user_data)
     return {"message": "Вы успешно зарегистрированы!"}
 
 
@@ -71,9 +71,12 @@ async def show_login_form(
 
 @router.post("/login/")
 async def auth_user(
-    user_data: UserAuth, response: Response, db: AsyncSession = Depends(get_db)
+    user_data: UserAuth, 
+    user_crud: UserCRUD = Depends(get_user_crud),
+    validator: ExceptionService = Depends(get_validator),
 ):
-    response = await get_response(user_data=user_data, db=db)
+    await validator.check_data_login(user_data=user_data)
+    response = await user_crud.authenticate_user(user_data=user_data)
     return response
 
 
@@ -89,7 +92,6 @@ async def logout_user(
 async def get_user(
     request: Request,
     current_user: UserModel = Depends(get_current_user),
-    # db: AsyncSession = Depends(get_db),
 ):
     return templates.TemplateResponse(
         request=request,
@@ -111,9 +113,9 @@ async def get_update_user(
 async def update_user(
     data_user: UpdateUser,
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    user_crud: UserCRUD = Depends(get_user_crud),
 ):
-    await update_db(user=current_user, data_user=data_user, db=db)
+    await user_crud.update_db(user=current_user, data_user=data_user)
     return {"message": "Пользователь успешно изменен"}
 
 
@@ -121,7 +123,7 @@ async def update_user(
 async def delete_user(
     response: Response,
     current_user: UserModel = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    user_crud: UserCRUD = Depends(get_user_crud),
 ):
-    delete_db(user=current_user, response=response, db=db)
+    await user_crud.delete_db(user=current_user, response=response)
     return {"message": "Пользователь успешно удален"}

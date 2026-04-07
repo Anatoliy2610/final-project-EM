@@ -24,14 +24,11 @@
             {% if team.id == current_user.team_id %}
             <a href='/team' class='btn btn-primary mb-3'>Посмотреть состав команды</a>
             <br>
-            <a href='/user_to_team' class='btn btn-primary mb-3'>добавить сотрудника в команду</a>
+            <a href='/add_user_to_team' class='btn btn-primary mb-3'>добавить сотрудника в команду</a>
             {% endif %}
           </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
-
-
-
 {% endblock %}

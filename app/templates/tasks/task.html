@@ -22,7 +22,7 @@
                     </tr>
                     <tr>
                         <th scope="row">Дедлайн</th>
-                        <td>{{ task_user.dedline }}</td>
+                        <td>{{ task_user.dedline.strftime('%d.%m.%Y %H:%M') }}</td>
                     </tr>
                     <tr>
                         <th scope="row">Описание</th>
@@ -60,7 +60,7 @@
                 {% for massage in chat %}
                 <tr>
                     <td>{{ massage.message }}</td>
-                    <td>{{ massage.created_at }}</td>
+                    <td>{{ massage.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
                     <td>{{ massage.sender.email }}</td>
                 </tr>
                 {% endfor %}
