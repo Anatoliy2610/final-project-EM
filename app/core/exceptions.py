@@ -30,7 +30,7 @@ class ExceptionService:
             select(UserModel).filter(UserModel.email == user_data.email)
         )
         user = query.first()
-        if user is None or not verify_password(user_data.password, user.hash_password):
+        if user is None or not await verify_password(user_data.password, user.hash_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Неверное имя пользователя или пароль",
@@ -148,7 +148,7 @@ class ExceptionService:
         query = await self.db.execute(
             select(UserModel).filter(UserModel.email == data_user.email_user)
         )
-        user = query.scalars().first()
+        data_user = query.scalars().first()
         if user.team_id != data_user.team_id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

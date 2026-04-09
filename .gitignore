@@ -1,7 +1,8 @@
 /venv/
-/__pycache__/
 /.vscode/
-/new_app/
-/app_magazine/
 .env
 .coverage
+__pycache__/
+.ruff_cache/
+.pytest_cache/
+

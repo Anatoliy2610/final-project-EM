@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+import os
+
 from fastapi import FastAPI
 from sqladmin import Admin
 
@@ -10,10 +13,14 @@ from app.teams.router import router as team_router
 from app.users.router import router as user_router
 
 
+@asynccontextmanager
 async def init_models(app: FastAPI):
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        yield
+    # Инициализация БД (только для продакшена)
+    if "TESTING" not in os.environ:
+        async with async_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    yield
+
 
 
 app = FastAPI(lifespan=init_models)
